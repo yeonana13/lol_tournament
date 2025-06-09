@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦋 나비 내전 - 밴픽 드래프트</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a1428 0%, #1e2328 100%);
+            color: #f0e6d2;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .draft-header {
+            background: rgba(12, 20, 33, 0.9);
+            padding: 20px;
+            border-bottom: 2px solid #c89b3c;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .game-title {
+            font-size: 28px;
+            font-weight: bold;
+            color: #c89b3c;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .draft-status {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .current-turn {
+            font-size: 20px;
+            font-weight: bold;
+            color: #c89b3c;
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .timer {
+            font-size: 36px;
+            font-weight: bold;
+            color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 2px solid #00ff88;
+            min-width: 80px;
+            text-align: center;
+            animation: timerPulse 1s infinite;
+        }
+
+        @keyframes timerPulse {
+            0%, 100% { box-shadow: 0 0 0 rgba(0, 255, 136, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.8); }
+        }
+
+        .timer.warning {
+            color: #ff9500;
+            border-color: #ff9500;
+        }
+
+        .timer.danger {
+            color: #e63946;
+            border-color: #e63946;
+            animation: timerDanger 0.3s infinite;
+        }
+
+        @keyframes timerDanger {
+            0%, 100% { background: rgba(230, 57, 70, 0.1); }
+            50% { background: rgba(230, 57, 70, 0.5); }
+        }
+
+        .main-container {
+            display: flex;
+            height: calc(100vh - 80px);
+        }
+
+        .ban-pick-panel {
+            width: 400px;
+            background: rgba(12, 20, 33, 0.8);
+            border-right: 2px solid #c89b3c;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .team-section {
+            flex: 1;
+            padding: 20px;
+            border-bottom: 1px solid rgba(200, 155, 60, 0.3);
+        }
+
+        .team-header {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .blue-team .team-header {
+            background: linear-gradient(135deg, rgba(60, 137, 230, 0.3), rgba(60, 137, 230, 0.1));
+            color: #3c89e6;
+            border: 1px solid rgba(60, 137, 230, 0.5);
+        }
+
+        .red-team .team-header {
+            background: linear-gradient(135deg, rgba(230, 57, 70, 0.3), rgba(230, 57, 70, 0.1));
+            color: #e63946;
+            border: 1px solid rgba(230, 57, 70, 0.5);
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #c89b3c;
+            margin-bottom: 10px;
+        }
+
+        .champion-slots {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .champion-slot {
+            width: 60px;
+            height: 60px;
+            background: rgba(15, 25, 35, 0.6);
+            border: 2px solid rgba(240, 230, 210, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .champion-slot.ban {
+            border-color: #e63946;
+            background: rgba(230, 57, 70, 0.2);
+        }
+
+        .champion-slot.pick {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+        }
+
+        .champion-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+
+        .champion-slot .ban-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(230, 57, 70, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+
+        .pick-slots {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .pick-slot {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: rgba(15, 25, 35, 0.4);
+            border-radius: 6px;
+            border: 1px solid rgba(240, 230, 210, 0.1);
+            min-height: 50px;
+        }
+
+        .pick-slot.filled {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .position-icon {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #463714, #5a4a1a);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            color: #c89b3c;
+            border: 1px solid #c89b3c;
+        }
+
+        .champion-info {
+            flex: 1;
+        }
+
+        .champion-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #f0e6d2;
+        }
+
+        .champions-grid {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .grid-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            padding: 10px 15px;
+            background: rgba(15, 25, 35, 0.8);
+            border: 2px solid #463714;
+            border-radius: 8px;
+            color: #f0e6d2;
+            font-size: 16px;
+            width: 300px;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #c89b3c;
+        }
+
+        .champion-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 8px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+
+        .champion-card {
+            aspect-ratio: 1;
+            background: rgba(15, 25, 35, 0.6);
+            border: 2px solid rgba(240, 230, 210, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .champion-card:hover {
+            border-color: #c89b3c;
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(200, 155, 60, 0.3);
+        }
+
+        .champion-card.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+        }
+
+        .champion-card.disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .champion-card img {
+            width: 100%;
+            height: 80%;
+            object-fit: cover;
+        }
+
+        .champion-card .name {
+            padding: 4px;
+            font-size: 11px;
+            text-align: center;
+            font-weight: bold;
+            color: #f0e6d2;
+            background: rgba(0, 0, 0, 0.7);
+            height: 20%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ban-indicator {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(230, 57, 70, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* 스크롤바 스타일 */
+        .champions-grid::-webkit-scrollbar,
+        .champion-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .champions-grid::-webkit-scrollbar-track,
+        .champion-grid::-webkit-scrollbar-track {
+            background: rgba(15, 25, 35, 0.6);
+        }
+
+        .champions-grid::-webkit-scrollbar-thumb,
+        .champion-grid::-webkit-scrollbar-thumb {
+            background: #c89b3c;
+            border-radius: 4px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body data-session-id="{{ session_id }}">
+    <div class="draft-header">
+        <div class="game-title">
+            <span>🦋</span>
+            나비 내전 - 밴픽 드래프트
+        </div>
+        <div class="draft-status">
+            <div class="current-turn" id="currentTurn">
+                블루팀 1번째 밴
+            </div>
+            <div class="timer" id="timer">30</div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- 밴픽 패널 -->
+        <div class="ban-pick-panel">
+            <!-- 블루팀 -->
+            <div class="team-section blue-team">
+                <div class="team-header">🔵 블루팀</div>
+                
+                <div class="section-title">밴 (5개)</div>
+                <div class="champion-slots" id="blueBans">
+                    <div class="champion-slot ban"></div>
+                    <div class="champion-slot ban"></div>
+                    <div class="champion-slot ban"></div>
+                    <div class="champion-slot ban"></div>
+                    <div class="champion-slot ban"></div>
+                </div>
+                
+                <div class="section-title">픽 (5개)</div>
+                <div class="pick-slots" id="bluePicks">
+                    <div class="pick-slot">
+                        <div class="position-icon">TOP</div>
+                        <div class="champion-info">
+                            <div class="champion-name">-</div>
+                        </div>
+                    </div>
+                    <div class="pick-slot">
+                        <div class="position-icon">JGL</div>
+                        <div class="champion-info">
+                            <div class="champion-name">-</div>
+                        </div>
+                    </div>
+                    <div class="pick-slot">
+                        <div class="position-icon">MID</div>
+                        <div class="champion-info">
+                            <div class="champion-name">-</div>
+                        </div>
+                    </div>
+                    <div class="pick-slot">
+                        <div class="position-icon">ADC</div>
+                        <div class="champion-info">
+                            <div class="champion-name">-</div>
+                        </div>
+                    </div>
+                    <div class="pick-slot">
+                        <div class="position-icon">SUP</div>
+                        <div class="champion-info">
+                            <div class="champion-name">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 레드팀 -->
+            <div class="team-section red-team">
+                <div class="team-header">🔴 레드팀</div>
+                
+                <div class="section-title">밴 (5개)</div>
+                <div class="champion-slots" id="redBans">
+                    <div class="champion-slot ban"></div>
+                    <div class="champion-slot ban"></div>
+                    <div class="champion-slot ban"></div>
+                    <div class="champion-slot ban"></div>
+                    <div class="champion-slot ban"></div>
+                </div>
+                
+                <div class="section-title">픽 (5개)</div>
+                <div class="pick-slots" id="redPicks">
+                    <div class="pick-slot">
+                        <div class="position-icon">TOP</div>
+                        <div class="champion-info">
+                            <div class="champion-name">-</div>
+                        </div>
+                    </div>
+                    <div class="pick-slot">
+                        <div class="position-icon">JGL</div>
+                        <div class="champion-info">
+                            <div class="champion-name">-</div>
+                        </div>
+                    </div>
+                    <div class="pick-slot">
+                        <div class="position-icon">MID</div>
+                        <div class="champion-info">
+                            <div class="champion-name">-</div>
+                        </div>
+                    </div>
+                    <div class="pick-slot">
+                        <div class="position-icon">ADC</div>
+                        <div class="champion-info">
+                            <div class="champion-name">-</div>
+                        </div>
+                    </div>
+                    <div class="pick-slot">
+                        <div class="position-icon">SUP</div>
+                        <div class="champion-info">
+                            <div class="champion-name">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 챔피언 그리드 -->
+        <div class="champions-grid">
+            <div class="grid-header">
+                <h2 style="color: #c89b3c;">챔피언 선택</h2>
+                <input type="text" class="search-box" placeholder="챔피언 검색..." id="championSearch">
+            </div>
+            <div class="champion-grid" id="championGrid">
+                <!-- 챔피언들이 여기에 동적으로 생성됩니다 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/draft.js') }}"></script>
+</body>
+</html>

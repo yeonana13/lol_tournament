@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦋 나비 내전 - 밴픽</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/banpick.css') }}">
+</head>
+<body data-session-id="{{ session_id }}">
+    <div class="header">
+        <div class="game-title">
+            <span class="butterfly-icon">🦋</span>
+            나비 내전 - 밴픽 시스템
+        </div>
+        <div class="phase-indicator">
+            <div class="phase-text">현재 단계:</div>
+            <div class="phase-status" id="currentPhase">포지션 선택 중</div>
+            <div class="session-info">세션: {{ session_id }}</div>
+        </div>
+    </div>
+
+    <!-- 포지션 선택 인터페이스 -->
+    <div id="positionSelectInterface" class="main-container">
+        <div class="team-section blue-team">
+            <div class="team-header">🔵 블루팀</div>
+            <div class="position-slots">
+                <div class="position-slot" data-team="blue" data-position="TOP">
+                    <div class="position-icon">TOP</div>
+                    <div class="position-info">
+                        <div class="position-name">탑</div>
+                        <div class="player-info">
+                            <span class="waiting-text">포지션 선택 대기 중</span>
+                            <button class="btn btn-join" onclick="banPickSystem.selectPosition('blue', 'TOP')">참가</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- JUG, MID, ADC, SUP 동일한 구조로 반복 -->
+                <div class="position-slot" data-team="blue" data-position="JUG">
+                    <div class="position-icon">JGL</div>
+                    <div class="position-info">
+                        <div class="position-name">정글</div>
+                        <div class="player-info">
+                            <span class="waiting-text">포지션 선택 대기 중</span>
+                            <button class="btn btn-join" onclick="banPickSystem.selectPosition('blue', 'JUG')">참가</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="position-slot" data-team="blue" data-position="MID">
+                    <div class="position-icon">MID</div>
+                    <div class="position-info">
+                        <div class="position-name">미드</div>
+                        <div class="player-info">
+                            <span class="waiting-text">포지션 선택 대기 중</span>
+                            <button class="btn btn-join" onclick="banPickSystem.selectPosition('blue', 'MID')">참가</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="position-slot" data-team="blue" data-position="ADC">
+                    <div class="position-icon">ADC</div>
+                    <div class="position-info">
+                        <div class="position-name">원딜</div>
+                        <div class="player-info">
+                            <span class="waiting-text">포지션 선택 대기 중</span>
+                            <button class="btn btn-join" onclick="banPickSystem.selectPosition('blue', 'ADC')">참가</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="position-slot" data-team="blue" data-position="SUP">
+                    <div class="position-icon">SUP</div>
+                    <div class="position-info">
+                        <div class="position-name">서포터</div>
+                        <div class="player-info">
+                            <span class="waiting-text">포지션 선택 대기 중</span>
+                            <button class="btn btn-join" onclick="banPickSystem.selectPosition('blue', 'SUP')">참가</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="center-section">
+            <div class="lobby-section">
+                <div class="lobby-title">⚡ 포지션 선택</div>
+                <button id="startDraftBtn" class="next-phase-btn" disabled>
+                    포지션 선택 중... (0/10)
+                </button>
+            </div>
+        </div>
+
+        <div class="team-section red-team">
+            <div class="team-header">🔴 레드팀</div>
+            <div class="position-slots">
+                <!-- 레드팀도 동일하게 5개 포지션 -->
+                <div class="position-slot" data-team="red" data-position="TOP">
+                    <div class="position-icon">TOP</div>
+                    <div class="position-info">
+                        <div class="position-name">탑</div>
+                        <div class="player-info">
+                            <span class="waiting-text">포지션 선택 대기 중</span>
+                            <button class="btn btn-join" onclick="banPickSystem.selectPosition('red', 'TOP')">참가</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="position-slot" data-team="red" data-position="JUG">
+                    <div class="position-icon">JGL</div>
+                    <div class="position-info">
+                        <div class="position-name">정글</div>
+                        <div class="player-info">
+                            <span class="waiting-text">포지션 선택 대기 중</span>
+                            <button class="btn btn-join" onclick="banPickSystem.selectPosition('red', 'JUG')">참가</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="position-slot" data-team="red" data-position="MID">
+                    <div class="position-icon">MID</div>
+                    <div class="position-info">
+                        <div class="position-name">미드</div>
+                        <div class="player-info">
+                            <span class="waiting-text">포지션 선택 대기 중</span>
+                            <button class="btn btn-join" onclick="banPickSystem.selectPosition('red', 'MID')">참가</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="position-slot" data-team="red" data-position="ADC">
+                    <div class="position-icon">ADC</div>
+                    <div class="position-info">
+                        <div class="position-name">원딜</div>
+                        <div class="player-info">
+                            <span class="waiting-text">포지션 선택 대기 중</span>
+                            <button class="btn btn-join" onclick="banPickSystem.selectPosition('red', 'ADC')">참가</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="position-slot" data-team="red" data-position="SUP">
+                    <div class="position-icon">SUP</div>
+                    <div class="position-info">
+                        <div class="position-name">서포터</div>
+                        <div class="player-info">
+                            <span class="waiting-text">포지션 선택 대기 중</span>
+                            <button class="btn btn-join" onclick="banPickSystem.selectPosition('red', 'SUP')">참가</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 드래프트 인터페이스 (초기에는 숨김) -->
+    <div id="draftInterface" style="display: none;">
+        <div class="draft-container">
+            <div class="draft-header">
+                <div id="currentTurn">블루팀 1번째 밴</div>
+                <div id="timer">30</div>
+            </div>
+            
+            <div class="ban-pick-display">
+                <div class="team-draft blue">
+                    <div class="team-name">🔵 블루팀</div>
+                    <div class="bans" id="blueBans"></div>
+                    <div class="picks" id="bluePicks"></div>
+                </div>
+                
+                <div class="team-draft red">
+                    <div class="team-name">🔴 레드팀</div>
+                    <div class="bans" id="redBans"></div>
+                    <div class="picks" id="redPicks"></div>
+                </div>
+            </div>
+            
+            <div class="champion-grid" id="championGrid"></div>
+        </div>
+    </div>
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <!-- JavaScript 라이브러리 및 모듈 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='js/oauth_modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/position_modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/banpick.js') }}"></script>
+</body>
+</html>

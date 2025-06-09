@@ -1,0 +1,420 @@
+// 중복 로드 방지
+if (window.BanPickSystem) {
+    console.log('⚠️ BanPickSystem 이미 로드됨, 재사용');
+} else {
+    console.log('✅ BanPickSystem 처음 로드');
+
+class BanPickSystem {
+    constructor(sessionId) {
+        this.sessionId = sessionId;
+        this.currentUser = null;
+        this.socket = io();
+        this.gameState = {
+            phase: 'position_select',
+            teams: {
+                blue: { TOP: null, JUG: null, MID: null, ADC: null, SUP: null },
+                red: { TOP: null, JUG: null, MID: null, ADC: null, SUP: null }
+            },
+            draft: {
+                bans: { blue: [], red: [] },
+                picks: { blue: [], red: [] },
+                currentTurn: 'blue_ban_1',
+                timer: 30
+            }
+        };
+        this.champions = [];
+        
+        this.loadCurrentUser();
+        this.initializeSocket();
+        this.loadChampions();
+    }
+
+    async loadCurrentUser() {
+        try {
+            const response = await fetch('/api/user');
+            if (response.ok) {
+                this.currentUser = await response.json();
+                this.displayCurrentUser();
+                console.log(`👤 자동 로그인 완료: ${this.currentUser.final_name || this.currentUser.display_name}`);
+            } else {
+                console.log('로그인되지 않음 - 리디렉트됨');
+            }
+        } catch (error) {
+            console.error('사용자 정보 로드 실패:', error);
+        }
+    }
+
+    displayCurrentUser() {
+        if (this.currentUser) {
+            const existingUserInfo = document.querySelector('.user-info');
+            if (existingUserInfo) {
+                existingUserInfo.remove();
+            }
+
+            const userDisplay = document.createElement('div');
+            userDisplay.className = 'user-info';
+            userDisplay.innerHTML = `
+                <img src="${this.currentUser.avatar_url}" alt="아바타" class="user-avatar">
+                <span class="user-name">👤 ${this.currentUser.final_name || this.currentUser.display_name}</span>
+                <a href="/auth/logout" class="logout-btn">로그아웃</a>
+            `;
+            document.querySelector('.header').appendChild(userDisplay);
+        }
+    }
+
+    initializeSocket() {
+        this.socket.on('connect', () => {
+            console.log('🔌 WebSocket 연결됨');
+            this.socket.emit('join_session', { 
+                session_id: this.sessionId,
+                user_info: this.currentUser 
+            });
+        });
+
+        this.socket.on('game_state_update', (data) => {
+            this.gameState = { ...this.gameState, ...data.game_state };
+            this.updateUI();
+        });
+
+        this.socket.on('position_selected', (data) => {
+            this.handlePositionUpdate(data);
+        });
+
+        this.socket.on('draft_update', (data) => {
+            this.handleDraftUpdate(data);
+        });
+    }
+
+    async loadChampions() {
+        try {
+            const response = await fetch(`/api/session/${this.sessionId}`);
+            const data = await response.json();
+            this.champions = data.champions;
+            console.log(`📊 ${this.champions.length}개 챔피언 로드됨`);
+        } catch (error) {
+            console.error('챔피언 데이터 로드 실패:', error);
+        }
+    }
+
+    selectPosition(team, position) {
+        console.log(`🎯 포지션 선택 시도: ${team} ${position}`);
+        
+        if (!this.currentUser) {
+            console.log('❌ 로그인되지 않음');
+            if (typeof positionModal !== 'undefined') {
+                positionModal.showLoginRequired();
+            } else {
+                alert('로그인이 필요합니다!');
+                loginWithDiscord();
+            }
+            return;
+        }
+
+        if (this.gameState.teams[team][position]) {
+            console.log('❌ 이미 선택된 포지션');
+            if (typeof positionModal !== 'undefined') {
+                positionModal.showError('이미 선택된 포지션입니다!', '⚠️');
+            } else {
+                alert('이미 선택된 포지션입니다!');
+            }
+            return;
+        }
+
+        const userName = this.currentUser.final_name || this.currentUser.display_name;
+        const currentPosition = this.findUserPosition(userName);
+        
+        if (currentPosition) {
+            console.log(`🔄 기존 포지션에서 이동: ${currentPosition.team} ${currentPosition.position} → ${team} ${position}`);
+            console.log('🔍 positionModal 타입:', typeof positionModal);
+            console.log('🔍 positionModal 객체:', positionModal);
+            
+            if (typeof positionModal !== 'undefined' && positionModal && positionModal.showMoveConfirm) {
+                console.log('✅ 모달 사용');
+                positionModal.showMoveConfirm(
+                    currentPosition.team, 
+                    currentPosition.position, 
+                    team, 
+                    position, 
+                    () => {
+                        this.leavePosition(currentPosition.team, currentPosition.position);
+                        this.executePositionSelection(team, position);
+                    }
+                );
+            } else {
+                console.log('❌ 모달 없음, 기본 confirm 사용');
+                if (confirm(`현재 ${currentPosition.team} ${currentPosition.position}에 있습니다. 이동하시겠습니까?`)) {
+                    this.leavePosition(currentPosition.team, currentPosition.position);
+                    this.executePositionSelection(team, position);
+                }
+            }
+            return;
+        }
+
+        this.executePositionSelection(team, position);
+    }
+
+    executePositionSelection(team, position) {
+        const userName = this.currentUser.final_name || this.currentUser.display_name;
+        console.log(`✅ 포지션 선택 실행: ${userName} → ${team} ${position}`);
+        
+        // 먼저 기존 포지션에서 제거 (클라이언트 측에서도)
+        const currentPosition = this.findUserPosition(userName);
+        if (currentPosition) {
+            this.gameState.teams[currentPosition.team][currentPosition.position] = null;
+            console.log(`🗑️ 기존 포지션 클리어: ${currentPosition.team} ${currentPosition.position}`);
+        }
+        
+        // 새 포지션에 할당 (클라이언트 측에서도)
+        this.gameState.teams[team][position] = userName;
+        console.log(`📍 새 포지션 설정: ${team} ${position} = ${userName}`);
+        
+        // 서버에 전송
+        this.socket.emit('select_position', {
+            session_id: this.sessionId,
+            team: team,
+            position: position,
+            user_name: userName,
+            discord_id: this.currentUser.id,
+            avatar_url: this.currentUser.avatar_url
+        });
+        
+        // UI 즉시 업데이트
+        this.updatePositionSlots();
+        this.checkAllPositionsFilled();
+        
+        // 성공 모달 표시 (있으면)
+        if (typeof positionModal !== 'undefined') {
+            positionModal.showPositionSelected(team, position, userName);
+        }
+    }
+
+    findUserPosition(userName) {
+        for (const team of ['blue', 'red']) {
+            for (const position of ['TOP', 'JUG', 'MID', 'ADC', 'SUP']) {
+                if (this.gameState.teams[team][position] === userName) {
+                    return { team, position };
+                }
+            }
+        }
+        return null;
+    }
+
+    handlePositionUpdate(data) {
+        console.log(`📡 포지션 업데이트 받음:`, data);
+        console.log(`📊 업데이트 전 상태:`, JSON.stringify(this.gameState.teams, null, 2));
+        
+        this.gameState.teams[data.team][data.position] = data.user_name;
+        
+        console.log(`📊 업데이트 후 상태:`, JSON.stringify(this.gameState.teams, null, 2));
+        
+        this.updatePositionSlots();
+        this.checkAllPositionsFilled();
+    }
+
+    updatePositionSlots() {
+        ['blue', 'red'].forEach(team => {
+            ['TOP', 'JUG', 'MID', 'ADC', 'SUP'].forEach(position => {
+                const slot = document.querySelector(`[data-team="${team}"][data-position="${position}"]`);
+                if (!slot) return;
+                
+                const player = this.gameState.teams[team][position];
+                const playerInfo = slot.querySelector('.player-info');
+                
+                if (player) {
+                    slot.classList.add('occupied');
+                    
+                    const isCurrentUser = this.currentUser && player === (this.currentUser.final_name || this.currentUser.display_name);
+                    if (isCurrentUser) {
+                        slot.classList.add('current-user');
+                    } else {
+                        slot.classList.remove('current-user');
+                    }
+                    
+                    playerInfo.innerHTML = `
+                        <span class="player-name">${player}</span>
+                        ${isCurrentUser ? 
+                            `<button class="btn btn-leave" onclick="banPickSystem.leavePosition('${team}', '${position}')">나가기</button>` :
+                            '<span class="occupied-text">선택됨</span>'
+                        }
+                    `;
+                } else {
+                    slot.classList.remove('occupied', 'current-user');
+                    playerInfo.innerHTML = `
+                        <span class="waiting-text">포지션 선택 대기 중</span>
+                        <button class="btn btn-join" onclick="banPickSystem.selectPosition('${team}', '${position}')">참가</button>
+                    `;
+                }
+            });
+        });
+    }
+
+    leavePosition(team, position) {
+        console.log(`🚪 포지션 나가기: ${team} ${position}`);
+        this.socket.emit('leave_position', {
+            session_id: this.sessionId,
+            team: team,
+            position: position
+        });
+    }
+
+    checkAllPositionsFilled() {
+        const totalFilled = Object.values(this.gameState.teams.blue).filter(p => p).length +
+                           Object.values(this.gameState.teams.red).filter(p => p).length;
+        
+        const startButton = document.getElementById('startDraftBtn');
+        if (startButton) {
+            if (totalFilled === 10) {
+                startButton.disabled = false;
+                startButton.textContent = '🚀 밴픽 시작하기';
+                startButton.onclick = () => this.startDraft();
+            } else {
+                startButton.disabled = true;
+                startButton.textContent = `포지션 선택 중... (${totalFilled}/10)`;
+            }
+        }
+    }
+
+    startDraft() {
+        this.socket.emit('start_draft', { session_id: this.sessionId });
+        this.gameState.phase = 'draft';
+        this.showDraftInterface();
+    }
+
+    showDraftInterface() {
+        document.getElementById('positionSelectInterface').style.display = 'none';
+        document.getElementById('draftInterface').style.display = 'block';
+        document.getElementById('currentPhase').textContent = '밴픽 드래프트';
+        this.createChampionGrid();
+        this.updateDraftState();
+    }
+
+    createChampionGrid() {
+        const championGrid = document.getElementById('championGrid');
+        if (!championGrid) return;
+        
+        championGrid.innerHTML = '';
+        
+        this.champions.forEach(champion => {
+            const championCard = document.createElement('div');
+            championCard.className = 'champion-card';
+            championCard.setAttribute('data-champion', champion.english_name);
+            championCard.innerHTML = `
+                <img src="${champion.image_url}" alt="${champion.korean_name}" 
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                <div class="champion-placeholder" style="display:none;">${champion.korean_name}</div>
+                <div class="champion-name">${champion.korean_name}</div>
+            `;
+            championCard.onclick = () => this.selectChampion(champion.english_name);
+            championGrid.appendChild(championCard);
+        });
+    }
+
+    selectChampion(championName) {
+        if (this.gameState.phase !== 'draft') return;
+        
+        this.socket.emit('select_champion', {
+            session_id: this.sessionId,
+            champion: championName,
+            action: this.getCurrentAction()
+        });
+    }
+
+    getCurrentAction() {
+        const turn = this.gameState.draft.currentTurn;
+        if (turn.includes('ban')) return 'ban';
+        if (turn.includes('pick')) return 'pick';
+        return 'ban';
+    }
+
+    handleDraftUpdate(data) {
+        this.gameState.draft = data.draft_state;
+        this.updateDraftState();
+    }
+
+    updateDraftState() {
+        this.updateBanPickDisplay();
+        this.updateCurrentTurn();
+        this.updateTimer();
+    }
+
+    updateBanPickDisplay() {
+        ['blue', 'red'].forEach(team => {
+            const banContainer = document.getElementById(`${team}Bans`);
+            if (banContainer) {
+                banContainer.innerHTML = '';
+                this.gameState.draft.bans[team].forEach(champion => {
+                    const banDiv = document.createElement('div');
+                    banDiv.className = 'ban-champion';
+                    banDiv.textContent = champion;
+                    banContainer.appendChild(banDiv);
+                });
+            }
+        });
+
+        ['blue', 'red'].forEach(team => {
+            const pickContainer = document.getElementById(`${team}Picks`);
+            if (pickContainer) {
+                pickContainer.innerHTML = '';
+                this.gameState.draft.picks[team].forEach((champion, index) => {
+                    const positions = ['TOP', 'JUG', 'MID', 'ADC', 'SUP'];
+                    const pickDiv = document.createElement('div');
+                    pickDiv.className = 'pick-champion';
+                    pickDiv.innerHTML = `
+                        <div class="position">${positions[index]}</div>
+                        <div class="champion">${champion}</div>
+                    `;
+                    pickContainer.appendChild(pickDiv);
+                });
+            }
+        });
+    }
+
+    updateCurrentTurn() {
+        const turnIndicator = document.getElementById('currentTurn');
+        if (turnIndicator) {
+            const turn = this.gameState.draft.currentTurn;
+            turnIndicator.textContent = this.getTurnDescription(turn);
+        }
+    }
+
+    getTurnDescription(turn) {
+        const turnMap = {
+            'blue_ban_1': '블루팀 1번째 밴',
+            'red_ban_1': '레드팀 1번째 밴',
+            'red_ban_2': '레드팀 2번째 밴',
+            'blue_ban_2': '블루팀 2번째 밴',
+            'blue_pick_1': '블루팀 1번째 픽',
+            'red_pick_1': '레드팀 1번째 픽',
+        };
+        return turnMap[turn] || turn;
+    }
+
+    updateTimer() {
+        const timerElement = document.getElementById('timer');
+        if (timerElement) {
+            timerElement.textContent = this.gameState.draft.timer;
+        }
+    }
+
+    updateUI() {
+        if (this.gameState.phase === 'position_select') {
+            this.updatePositionSlots();
+            this.checkAllPositionsFilled();
+        } else if (this.gameState.phase === 'draft') {
+            this.updateDraftState();
+        }
+    }
+}
+
+// 전역 변수로 시스템 초기화
+let banPickSystem;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const sessionId = document.querySelector('[data-session-id]').dataset.sessionId;
+    banPickSystem = new BanPickSystem(sessionId);
+});
+
+
+// 전역 할당
+window.BanPickSystem = BanPickSystem;
+}
