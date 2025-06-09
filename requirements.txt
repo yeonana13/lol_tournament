@@ -1,0 +1,20 @@
+# Discord Bot
+discord.py==2.3.2
+python-dotenv==1.0.0
+
+# Web Framework
+Flask==3.0.0
+Flask-CORS==4.0.0
+Flask-SocketIO==5.3.6
+
+# Database
+SQLAlchemy==2.0.23
+alembic==1.13.1
+PyMySQL==1.1.0
+
+# Utilities
+requests==2.31.0
+aiohttp==3.9.1
+
+# Development
+python-decouple==3.8
