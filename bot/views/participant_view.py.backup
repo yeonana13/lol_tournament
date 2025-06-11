@@ -6,12 +6,9 @@ from discord.ui import Button, View
 from shared.constants import MAX_PARTICIPANTS, RANDOM_MESSAGES
 from bot.utils.nickname_parser import get_tier_sort_key
 from bot.views.game_start_view import GameStartView
-import requests
-import uuid
-from datetime import datetime
 
 class ParticipantView(View):
-    def __init__(self, thread, embed_message, host, title, format_user_info_func):
+    def __init__(self, thread, embed_message, host, title):
         super().__init__(timeout=None)
         self.participants = []
         self.waitlist = []
@@ -20,7 +17,6 @@ class ParticipantView(View):
         self.host = host
         self.game_started = False
         self.title = title
-        self.format_user_info = format_user_info_func  # 유저 정보 포맷팅 함수
 
     def sort_participants(self):
         def tier_key(user_id):
@@ -32,84 +28,6 @@ class ParticipantView(View):
                 pass
             return float('inf')
         self.participants.sort(key=tier_key)
-
-    async def send_to_web_server(self):
-        """웹서버로 세션 데이터 전송"""
-        try:
-            session_id = str(uuid.uuid4())[:8]
-            
-            # 참가자 정보 수집
-            participants_data = []
-            for user_id in self.participants:
-                try:
-                    member = await self.embed_message.guild.fetch_member(user_id)
-                    user_info = self.format_user_info(member)
-                    participants_data.append(user_info)
-                except Exception as e:
-                    print(f"유저 정보 가져오기 실패 (ID: {user_id}): {e}")
-                    # 실패한 경우 기본 정보로 대체
-                    participants_data.append({
-                        'discord_id': str(user_id),
-                        'username': f'Unknown_{user_id}',
-                        'display_name': f'알 수 없는 사용자',
-                        'avatar_url': 'https://cdn.discordapp.com/embed/avatars/0.png',
-                        'discriminator': '0000'
-                    })
-            
-            # 웹서버에 전송할 데이터
-            session_data = {
-                'session_id': session_id,
-                'participants': participants_data,
-                'channel_id': str(self.embed_message.channel.id),
-                'guild_id': str(self.embed_message.guild.id),
-                'created_by': self.format_user_info(self.host),
-                'created_at': datetime.now().isoformat(),
-                'title': self.title
-            }
-            
-            # 웹서버로 POST 요청
-            response = requests.post(
-                'http://localhost:5000/api/session/create',
-                json=session_data,
-                headers={'Content-Type': 'application/json'},
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                # 밴픽 페이지 링크 전송
-                embed = discord.Embed(
-                    title="🦋 밴픽 페이지가 생성되었습니다!",
-                    description=f"아래 링크를 클릭해서 밴픽을 진행하세요.",
-                    color=0x9b59b6
-                )
-                embed.add_field(
-                    name="밴픽 페이지",
-                    value=f"[여기를 클릭하세요!](http://localhost:5000/banpick/{session_id})",
-                    inline=False
-                )
-                embed.add_field(
-                    name="세션 ID",
-                    value=f"`{session_id}`",
-                    inline=True
-                )
-                embed.add_field(
-                    name="참가자 수",
-                    value=f"{len(participants_data)}명",
-                    inline=True
-                )
-                
-                await self.thread.send(embed=embed)
-                return True
-            else:
-                await self.thread.send(f"❌ 웹서버 연결 실패: {response.text}")
-                return False
-                
-        except requests.exceptions.RequestException:
-            await self.thread.send("❌ 웹서버에 연결할 수 없습니다. 웹서버가 실행 중인지 확인해주세요.")
-            return False
-        except Exception as e:
-            await self.thread.send(f"❌ 세션 생성 중 오류 발생: {str(e)}")
-            return False
 
     async def check_full(self):
         if len(self.participants) == MAX_PARTICIPANTS and not self.game_started:
@@ -123,14 +41,7 @@ class ParticipantView(View):
             )
             embed.set_footer(text="🦋 내전을 시작하려면 아래 버튼을 눌러주세요.")
 
-            view = GameStartView(
-                self.thread, 
-                self.host, 
-                self.embed_message, 
-                self.title, 
-                self.participants,
-                self.send_to_web_server  # 웹서버 전송 함수 전달
-            )
+            view = GameStartView(self.thread, self.host, self.embed_message, self.title, self.participants)
             await self.thread.send(embed=embed, view=view)
 
     @discord.ui.button(label="참가하기", style=discord.ButtonStyle.green)

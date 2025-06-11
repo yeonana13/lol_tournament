@@ -1,0 +1,465 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(135deg, #000000 0%, #0A0A0A 50%, #000000 100%);
+    color: #00FF88;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.draft-container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* 헤더 */
+.draft-header {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 20, 0.9) 100%);
+    backdrop-filter: blur(15px);
+    padding: 24px;
+    border-radius: 16px;
+    margin-bottom: 24px;
+    text-align: center;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 255, 136, 0.2);
+}
+
+.draft-header h1 {
+    color: #FFFFFF;
+    margin-bottom: 16px;
+    font-weight: 600;
+    font-size: 28px;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+}
+
+.current-turn-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    background: linear-gradient(135deg, #001100 0%, #003300 50%, #001100 100%);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 255, 136, 0.3);
+}
+
+.turn-player {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.turn-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid #00FF88;
+    box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+}
+
+.turn-info {
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+.timer {
+    background: rgba(0, 255, 136, 0.1);
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #00FF88;
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.6);
+}
+
+/* 메인 드래프트 영역 */
+.draft-main {
+    display: grid;
+    grid-template-columns: 320px 1fr 320px;
+    gap: 24px;
+    align-items: start;
+}
+
+/* 팀 구성 */
+.team-composition {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 20, 0.9) 100%);
+    backdrop-filter: blur(15px);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1);
+}
+
+.team-header {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    padding: 12px;
+    border-radius: 10px;
+    letter-spacing: 0.5px;
+}
+
+.blue-team .team-header {
+    background: linear-gradient(135deg, #0596AA 0%, #0AC8B9 100%);
+    color: white;
+    box-shadow: 0 4px 16px rgba(5, 150, 170, 0.3);
+}
+
+.red-team .team-header {
+    background: linear-gradient(135deg, #CD5334 0%, #F0464E 100%);
+    color: white;
+    box-shadow: 0 4px 16px rgba(205, 83, 52, 0.3);
+}
+
+.position-slot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    margin: 10px 0;
+    background: rgba(0, 255, 136, 0.05);
+    border-radius: 10px;
+    border: 1px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.position-slot:hover {
+    background: rgba(0, 255, 136, 0.08);
+    border-color: rgba(0, 255, 136, 0.3);
+}
+
+.position-slot.current-pick {
+    border-color: #00FF88;
+    background: rgba(0, 255, 136, 0.15);
+    box-shadow: 0 0 30px rgba(0, 255, 136, 0.4);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 30px rgba(0, 255, 136, 0.4); }
+    50% { box-shadow: 0 0 40px rgba(0, 255, 136, 0.6); }
+    100% { box-shadow: 0 0 30px rgba(0, 255, 136, 0.4); }
+}
+
+.position-label {
+    width: 44px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    background: linear-gradient(135deg, #00FF88 0%, #00CC66 100%);
+    color: #000000;
+    padding: 6px 4px;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+    text-shadow: none;
+}
+
+.player-info {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.player-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #00FF88;
+}
+
+.player-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #FFFFFF;
+}
+
+.champion-pick {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    border: 1px solid #00FF88;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #666666;
+}
+
+.champion-icon {
+    width: 100%;
+    height: 100%;
+    border-radius: 7px;
+}
+
+/* 중앙 밴픽 영역 */
+.ban-pick-center {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.95) 0%, rgba(20, 20, 20, 0.9) 100%);
+    backdrop-filter: blur(15px);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 255, 136, 0.1);
+}
+
+.bans-section {
+    margin-bottom: 32px;
+}
+
+.bans-title {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #00FF88;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+.bans-display {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.team-bans {
+    flex: 1;
+}
+
+.team-bans-header {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.blue-bans .team-bans-header {
+    background: rgba(5, 150, 170, 0.2);
+    color: #0AC8B9;
+    border: 1px solid rgba(10, 200, 185, 0.3);
+}
+
+.red-bans .team-bans-header {
+    background: rgba(205, 83, 52, 0.2);
+    color: #F0464E;
+    border: 1px solid rgba(240, 70, 78, 0.3);
+}
+
+.ban-slots {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.ban-slot {
+    width: 56px;
+    height: 56px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.ban-slot.filled {
+    border-color: #CD5334;
+    box-shadow: 0 0 10px rgba(205, 83, 52, 0.5);
+}
+
+.ban-slot::after {
+    content: '❌';
+    position: absolute;
+    color: #CD5334;
+    font-size: 18px;
+    display: none;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.ban-slot.filled::after {
+    display: block;
+}
+
+.ban-slot img {
+    width: 100%;
+    height: 100%;
+    border-radius: 7px;
+}
+
+/* 챔피언 선택 영역 */
+.champion-select {
+    margin-top: 24px;
+}
+
+.search-container {
+    margin-bottom: 16px;
+}
+
+.champion-search {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(0, 255, 136, 0.05);
+    border: 1px solid rgba(0, 255, 136, 0.3);
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.champion-search:focus {
+    outline: none;
+    border-color: #00FF88;
+    box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.2);
+    background: rgba(0, 255, 136, 0.08);
+}
+
+.champion-search::placeholder {
+    color: #666666;
+}
+
+.champion-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 8px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 10px;
+    border: 1px solid rgba(0, 255, 136, 0.2);
+}
+
+.champion-grid::-webkit-scrollbar {
+    width: 6px;
+}
+
+.champion-grid::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+}
+
+.champion-grid::-webkit-scrollbar-thumb {
+    background: #00FF88;
+    border-radius: 3px;
+}
+
+.champion-item {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.champion-item:hover:not(.banned):not(.picked) {
+    border-color: #00FF88;
+    transform: scale(1.05);
+    box-shadow: 0 4px 20px rgba(0, 255, 136, 0.4);
+}
+
+.champion-item.banned {
+    filter: grayscale(100%) brightness(0.3);
+    cursor: not-allowed;
+}
+
+.champion-item.picked {
+    filter: grayscale(100%) brightness(0.4);
+    cursor: not-allowed;
+}
+
+.champion-item.selected {
+    border-color: #00FF88;
+    box-shadow: 0 0 25px rgba(0, 255, 136, 0.7);
+    transform: scale(1.05);
+}
+
+.champion-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* 액션 버튼 */
+.action-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    justify-content: center;
+}
+
+.current-action-btn {
+    padding: 16px 32px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 160px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.current-action-btn.ban-mode {
+    background: linear-gradient(135deg, #CD5334 0%, #F0464E 100%);
+    color: white;
+    box-shadow: 0 4px 16px rgba(205, 83, 52, 0.3);
+}
+
+.current-action-btn.ban-mode:hover:not(:disabled) {
+    background: linear-gradient(135deg, #B8472F 0%, #E03E47 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(205, 83, 52, 0.4);
+}
+
+.current-action-btn.pick-mode {
+    background: linear-gradient(135deg, #0596AA 0%, #0AC8B9 100%);
+    color: white;
+    box-shadow: 0 4px 16px rgba(5, 150, 170, 0.3);
+}
+
+.current-action-btn.pick-mode:hover:not(:disabled) {
+    background: linear-gradient(135deg, #048299 0%, #09B3A6 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(5, 150, 170, 0.4);
+}
+
+.current-action-btn:disabled {
+    background: linear-gradient(135deg, #333333 0%, #555555 100%);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 반응형 */
+@media (max-width: 1200px) {
+    .draft-main {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .champion-grid {
+        grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+    }
+    
+    .champion-item {
+        width: 56px;
+        height: 56px;
+    }
+}

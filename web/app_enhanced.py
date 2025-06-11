@@ -43,55 +43,7 @@ def index():
 
 @app.route('/hello')
 def hello():
-    return "Hello! 라우트가 작동합니다!"
-
-@app.route('/draft-test')
-def draft_test_simple():
-    return f"<h1>드래프트 테스트</h1><p>현재 시간: {datetime.now()}</p>"
-
-
-@app.route('/draft/<session_id>')
-def draft_page(session_id):
-    """밴픽 드래프트 페이지"""
-    user = session.get('user')
-    
-    if not user:
-        return redirect(url_for('discord_login', next=request.url))
-    
-    print(f"✅ 드래프트 페이지 접근: {user.get('display_name', 'Unknown')} -> {session_id}")
-    return render_template('draft.html', 
-                         session_id=session_id, 
-                         user_info=user)
-
-@app.route('/test/draft')
-def test_draft():
-    """테스트용 드래프트 페이지"""
-    user = session.get('user')
-    
-    if not user:
-        return redirect(url_for('discord_login', next=request.url))
-    
-    import time
-    test_session_id = f"test_{int(time.time())}"
-    print(f"🧪 테스트 드래프트: {user.get('display_name', 'Unknown')} -> {test_session_id}")
-    
-    return render_template('draft.html', 
-                         session_id=test_session_id, 
-                         user_info=user)
-@app.route('/banpick/<session_id>')
-def banpick(session_id):
-    """밴픽 페이지 - OAuth 로그인 필요"""
-    user = session.get('user')
-    
-    if not user:
-        print(f"🔒 로그인되지 않은 접근: {session_id}")
-        # 로그인 페이지로 리디렉트
-        return redirect(url_for('discord_login', next=request.url))
-    
-    print(f"✅ 로그인된 사용자 접근: {user['display_name']} -> {session_id}")
-    return render_template('banpick.html', 
-                         session_id=session_id, 
-                         user_info=user)
+    return "Hello! 사이버펑크 시스템이 작동합니다!"
 
 @app.route('/auth/discord')
 def discord_login():
@@ -160,35 +112,25 @@ def get_current_user():
     else:
         return jsonify({'error': 'Not authenticated'}), 401
 
-@app.route('/api/session/<session_id>')
-def get_session(session_id):
-    """세션 정보 조회"""
-    db = Database()
-    
-    # 챔피언 데이터 조회
-    champions = db.fetch_all("SELECT * FROM champions ORDER BY english_name")
-    
-    return jsonify({
-        'session_id': session_id,
-        'champions': champions,
-        'status': 'active'
-    })
-
-@socketio.on('connect')
-def on_connect():
-    print(f"🔌 클라이언트 연결: {request.sid}")
-
-@socketio.on('disconnect')
-def on_disconnect():
-    print(f"🔌 클라이언트 연결 해제: {request.sid}")
-
-@socketio.on('join_session')
-def on_join_session(data):
-    session_id = data['session_id']
-    join_room(session_id)
-    
-    # 게임 상태 초기화 (없을 경우)
-    if session_id not in game_states:
+@app.route('/api/session/create', methods=['POST'])
+def create_session():
+    """디스코드 봇에서 세션 생성 요청"""
+    try:
+        data = request.get_json()
+        session_id = data['session_id']
+        
+        # 세션 데이터 저장
+        game_sessions[session_id] = {
+            'participants': data['participants'],
+            'channel_id': data['channel_id'],
+            'guild_id': data['guild_id'],
+            'created_by': data['created_by'],
+            'created_at': data['created_at'],
+            'title': data.get('title', '나비내전'),
+            'phase': 'lobby'
+        }
+        
+        # 게임 상태 초기화
         game_states[session_id] = {
             'phase': 'position_select',
             'teams': {
@@ -200,126 +142,214 @@ def on_join_session(data):
                 'picks': {'blue': [], 'red': []},
                 'currentTurn': 'blue_ban_1',
                 'timer': 30
+            },
+            'participants': data['participants']
+        }
+        
+        print(f"✅ 세션 생성: {session_id} ({len(data['participants'])}명)")
+        return jsonify({'success': True, 'session_id': session_id})
+    
+    except Exception as e:
+        print(f"❌ 세션 생성 실패: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/session/<session_id>')
+def get_session(session_id):
+    """세션 정보 조회"""
+    try:
+        db = Database()
+        champions = db.fetch_all("SELECT * FROM champions ORDER BY english_name")
+        
+        return jsonify({
+            'session_id': session_id,
+            'champions': champions,
+            'status': 'active'
+        })
+    except Exception as e:
+        # 데이터베이스 연결 실패 시 더미 데이터 반환
+        dummy_champions = [
+            {
+                'english_name': 'Aatrox',
+                'korean_name': '아트록스',
+                'image_url': 'https://ddragon.leagueoflegends.com/cdn/13.24.1/img/champion/Aatrox.png'
+            },
+            {
+                'english_name': 'Ahri',
+                'korean_name': '아리',
+                'image_url': 'https://ddragon.leagueoflegends.com/cdn/13.24.1/img/champion/Ahri.png'
             }
+        ]
+        
+        return jsonify({
+            'session_id': session_id,
+            'champions': dummy_champions,
+            'status': 'active'
+        })
+
+@app.route('/api/session/<session_id>/users')
+def get_session_users(session_id):
+    """세션의 유저 정보 반환"""
+    if session_id not in game_sessions:
+        return jsonify({'error': 'Session not found'}), 404
+    
+    session_data = game_sessions[session_id]
+    game_state = game_states.get(session_id, {})
+    
+    return jsonify({
+        'participants': session_data['participants'],
+        'teams': game_state.get('teams', {}),
+        'phase': game_state.get('phase', 'lobby')
+    })
+
+@app.route('/cyber_test')
+def cyber_test():
+    """사이버 테스트 페이지"""
+    return '''
+    <html>
+    <head>
+        <title>🤖 사이버펑크 드래프트</title>
+        <style>
+            body {
+                background: linear-gradient(45deg, #000000, #001100);
+                color: #00FF88;
+                font-family: 'Courier New', monospace;
+                padding: 50px;
+                text-align: center;
+            }
+            .matrix {
+                border: 2px solid #00FF88;
+                padding: 30px;
+                border-radius: 10px;
+                box-shadow: 0 0 30px rgba(0,255,136,0.5);
+                max-width: 600px;
+                margin: 0 auto;
+            }
+            a {
+                color: #00FF88;
+                text-decoration: none;
+                font-size: 20px;
+                border: 1px solid #00FF88;
+                padding: 15px 30px;
+                display: inline-block;
+                margin: 20px;
+                transition: all 0.3s;
+            }
+            a:hover {
+                background: #00FF88;
+                color: #000000;
+                box-shadow: 0 0 20px #00FF88;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="matrix">
+            <h1>🤖 CYBER DRAFT SYSTEM</h1>
+            <p>>>> ACCESSING MAINFRAME <<<</p>
+            <p>>>> LOADING NEURAL INTERFACE <<<</p>
+            <a href="/draft_cyber/cyber_test_123">🚀 ENTER THE MATRIX</a>
+        </div>
+    </body>
+    </html>
+    '''
+
+@app.route('/draft_cyber/<session_id>')
+def draft_cyber_page(session_id):
+    """사이버펑크 드래프트 페이지"""
+    user = session.get('user')
+    
+    if not user:
+        return redirect(url_for('discord_login', next=request.url))
+    
+    # 세션 데이터가 없으면 테스트용 더미 데이터 생성
+    if session_id not in game_sessions:
+        print(f"🧪 사이버 테스트용 세션 데이터 생성: {session_id}")
+        
+        # 현재 로그인된 유저 정보
+        current_user_info = {
+            'discord_id': user.get('id', 'current_user'),
+            'username': user.get('username', 'CurrentUser'),
+            'display_name': user.get('display_name', 'Current User'),
+            'avatar_url': user.get('avatar_url', 'https://cdn.discordapp.com/embed/avatars/0.png'),
+            'discriminator': user.get('discriminator', '0000')
+        }
+        
+        # 더미 참가자 데이터 (10명)
+        dummy_participants = [current_user_info]
+        for i in range(1, 10):
+            dummy_participants.append({
+                'discord_id': f'cyber_{i}',
+                'username': f'CyberUser{i}',
+                'display_name': f'사이버유저{i}',
+                'avatar_url': f'https://cdn.discordapp.com/embed/avatars/{i % 6}.png',
+                'discriminator': f'{2000 + i:04d}'
+            })
+        
+        # 세션 데이터 저장
+        game_sessions[session_id] = {
+            'participants': dummy_participants,
+            'channel_id': 'cyber_channel',
+            'guild_id': 'cyber_guild',
+            'created_by': current_user_info,
+            'created_at': datetime.now().isoformat(),
+            'title': '🤖 사이버 나비내전',
+            'phase': 'draft'
+        }
+        
+        # 게임 상태 초기화
+        game_states[session_id] = {
+            'phase': 'position_select',
+            'teams': {
+                'blue': {'TOP': None, 'JUG': None, 'MID': None, 'ADC': None, 'SUP': None},
+                'red': {'TOP': None, 'JUG': None, 'MID': None, 'ADC': None, 'SUP': None}
+            },
+            'draft': {
+                'bans': {'blue': [], 'red': []},
+                'picks': {'blue': [], 'red': []},
+                'currentTurn': 'blue_ban_1',
+                'timer': 30
+            },
+            'participants': dummy_participants
         }
     
-    emit('game_state_update', {'game_state': game_states[session_id]})
-    print(f"🎮 세션 참가: {session_id}")
+    print(f"✅ 사이버 드래프트 접근: {user.get('display_name', 'Unknown')} -> {session_id}")
+    return render_template('draft_cyber.html', session_id=session_id, user_info=user)
 
-@socketio.on('select_position')
-def on_select_position(data):
+# 웹소켓 이벤트
+@socketio.on('connect')
+def on_connect():
+    print(f"🔌 클라이언트 연결: {request.sid}")
+
+@socketio.on('disconnect')
+def on_disconnect():
+    print(f"🔌 클라이언트 연결 해제: {request.sid}")
+
+@socketio.on('join_session')
+def on_join_session(data):
     session_id = data['session_id']
-    team = data['team']
-    position = data['position']
-    user_name = data['user_name']
+    discord_id = data.get('discord_id')
     
-    if session_id in game_states:
-        # 먼저 해당 사용자가 다른 포지션에 있는지 확인하고 제거
-        for t in ['blue', 'red']:
-            for p in ['TOP', 'JUG', 'MID', 'ADC', 'SUP']:
-                if game_states[session_id]['teams'][t][p] == user_name:
-                    game_states[session_id]['teams'][t][p] = None
-                    print(f"🗑️ 기존 포지션 제거: {user_name} from {t} {p}")
-                    
-                    # 기존 포지션 제거 알림
-                    emit('position_selected', {
-                        'team': t,
-                        'position': p,
-                        'user_name': None
-                    }, room=session_id)
-        
-        # 새 포지션이 비어있는지 확인 후 할당
-        if game_states[session_id]['teams'][team][position] is None:
-            game_states[session_id]['teams'][team][position] = user_name
-            
-            # 새 포지션 할당 알림
-            emit('position_selected', {
-                'team': team,
-                'position': position,
-                'user_name': user_name
-            }, room=session_id)
-            
-            print(f"✅ 포지션 선택: {user_name} -> {team} {position}")
-        else:
-            print(f"❌ 포지션 이미 선택됨: {team} {position}")
-
-@socketio.on('leave_position')
-def on_leave_position(data):
-    session_id = data['session_id']
-    team = data['team']
-    position = data['position']
+    join_room(session_id)
     
-    if session_id in game_states:
-        game_states[session_id]['teams'][team][position] = None
+    # 현재 상태 전송
+    if session_id in game_sessions:
+        session_data = game_sessions[session_id]
+        game_state = game_states.get(session_id, {})
         
-        emit('position_selected', {
-            'team': team,
-            'position': position,
-            'user_name': None
-        }, room=session_id)
-        
-        print(f"🚪 포지션 나가기: {team} {position}")
-
-@socketio.on('start_draft')
-def on_start_draft(data):
-    session_id = data['session_id']
+        emit('game_state_update', {
+            'game_state': game_state,
+            'participants': session_data.get('participants', []),
+            'current_user_discord_id': discord_id
+        })
     
-    if session_id in game_states:
-        game_states[session_id]['phase'] = 'draft'
-        
-        emit('game_state_update', {'game_state': game_states[session_id]}, room=session_id)
-        print(f"🚀 드래프트 시작: {session_id}")
-
-@socketio.on('select_champion')
-def on_select_champion(data):
-    session_id = data['session_id']
-    champion = data['champion']
-    action = data['action']
-    
-    if session_id in game_states:
-        draft_state = game_states[session_id]['draft']
-        current_turn = draft_state['currentTurn']
-        
-        # 현재 턴에 따라 밴/픽 처리
-        if 'blue' in current_turn and action == 'ban':
-            draft_state['bans']['blue'].append(champion)
-        elif 'red' in current_turn and action == 'ban':
-            draft_state['bans']['red'].append(champion)
-        elif 'blue' in current_turn and action == 'pick':
-            draft_state['picks']['blue'].append(champion)
-        elif 'red' in current_turn and action == 'pick':
-            draft_state['picks']['red'].append(champion)
-        
-        # 다음 턴으로 넘어가기
-        draft_state['currentTurn'] = get_next_turn(current_turn)
-        draft_state['timer'] = 30  # 타이머 리셋
-        
-        emit('draft_update', {'draft_state': draft_state}, room=session_id)
-        print(f"🎮 챔피언 {action}: {champion}")
-
-def get_next_turn(current_turn):
-    """다음 턴 계산"""
-    turn_order = [
-        'blue_ban_1', 'red_ban_1', 'red_ban_2', 'blue_ban_2',
-        'blue_pick_1', 'red_pick_1', 'red_pick_2', 'blue_pick_2',
-        'blue_ban_3', 'red_ban_3', 'red_ban_4', 'blue_ban_4',
-        'red_pick_3', 'blue_pick_3', 'blue_pick_4', 'red_pick_4',
-        'red_pick_5', 'blue_pick_5', 'completed'
-    ]
-    
-    try:
-        current_index = turn_order.index(current_turn)
-        next_index = min(current_index + 1, len(turn_order) - 1)
-        return turn_order[next_index]
-    except ValueError:
-        return 'completed'
+    print(f"🎮 세션 참가: {discord_id} -> {session_id}")
 
 def main():
     """웹서버 실행"""
-    print("🦋 나비 내전 웹 서버 시작 (OAuth 적용)...")
+    print("🤖 사이버펑크 나비 내전 웹 서버 시작...")
     print(f"🔑 Discord OAuth 설정:")
     print(f"   Client ID: {discord_oauth.client_id}")
     print(f"   Redirect URI: {discord_oauth.redirect_uri}")
+    print(f"🌐 테스트 URL: http://{Config.FLASK_HOST}:{Config.FLASK_PORT}/cyber_test")
     
     try:
         socketio.run(
@@ -333,121 +363,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-@app.route('/draft/<session_id>')
-def draft_page(session_id):
-    """밴픽 드래프트 페이지"""
-    user = session.get('user')
-    
-    if not user:
-        return redirect(url_for('discord_login', next=request.url))
-    
-    return render_template('draft.html', 
-                         session_id=session_id, 
-                         user_info=user)
-
-@socketio.on('join_draft')
-def on_join_draft(data):
-    session_id = data['session_id']
-    join_room(f"draft_{session_id}")
-    
-    # 드래프트 상태 초기화 (필요한 경우)
-    if session_id not in game_states:
-        game_states[session_id] = {
-            'phase': 'draft',
-            'currentTurn': 'blue_ban_1',
-            'timer': 30,
-            'bans': {'blue': [], 'red': []},
-            'picks': {'blue': [], 'red': []},
-            'teams': {
-                'blue': {'TOP': None, 'JUG': None, 'MID': None, 'ADC': None, 'SUP': None},
-                'red': {'TOP': None, 'JUG': None, 'MID': None, 'ADC': None, 'SUP': None}
-            }
-        }
-    
-    emit('draft_state_update', {'draft_state': game_states[session_id]})
-    print(f"🎮 드래프트 참가: {session_id}")
-
-@socketio.on('select_champion')
-def on_select_champion(data):
-    session_id = data['session_id']
-    champion_english = data['champion_english']
-    champion_korean = data['champion_korean']
-    action = data['action']
-    team = data['team']
-    
-    if session_id in game_states:
-        # 밴/픽 데이터 저장
-        if action == 'ban':
-            game_states[session_id]['bans'][team].append(champion_korean)
-        elif action == 'pick':
-            game_states[session_id]['picks'][team].append(champion_korean)
-        
-        # 모든 드래프트 참가자에게 업데이트 전송
-        emit('champion_selected', {
-            'champion_english': champion_english,
-            'champion_korean': champion_korean,
-            'action': action,
-            'team': team
-        }, room=f"draft_{session_id}")
-        
-        print(f"🎯 챔피언 {action}: {team} - {champion_korean}")
-
-@socketio.on('draft_completed')
-def on_draft_completed(data):
-    session_id = data['session_id']
-    final_state = data['final_state']
-    
-    if session_id in game_states:
-        game_states[session_id] = final_state
-        
-        # 디스코드로 결과 전송 (추후 구현)
-        print(f"🎉 드래프트 완료: {session_id}")
-        print(f"   블루팀 밴: {final_state['bans']['blue']}")
-        print(f"   레드팀 밴: {final_state['bans']['red']}")
-        print(f"   블루팀 픽: {final_state['picks']['blue']}")
-        print(f"   레드팀 픽: {final_state['picks']['red']}")
-
-@app.route('/test/draft')
-def test_draft():
-    """테스트용 드래프트 페이지"""
-    user = session.get('user')
-    
-    if not user:
-        return redirect(url_for('discord_login', next=request.url))
-    
-    # 테스트용 세션 ID 생성
-    test_session_id = f"test_{int(datetime.now().timestamp())}"
-    
-    return render_template('draft.html', 
-                         session_id=test_session_id, 
-                         user_info=user)
-
-# 드래프트 소켓 이벤트들
-@socketio.on('join_draft')
-def on_join_draft(data):
-    session_id = data['session_id']
-    join_room(f"draft_{session_id}")
-    
-    print(f"🎮 드래프트 참가: {session_id}")
-    emit('draft_joined', {'session_id': session_id})
-
-@socketio.on('select_champion')
-def on_select_champion_draft(data):
-    session_id = data['session_id']
-    champion_english = data['champion_english']
-    champion_korean = data['champion_korean']
-    action = data['action']
-    team = data['team']
-    turn = data['turn']
-    
-    # 모든 드래프트 참가자에게 선택 알림
-    emit('champion_selected', {
-        'champion_english': champion_english,
-        'champion_korean': champion_korean,
-        'action': action,
-        'team': team,
-        'turn': turn
-    }, room=f"draft_{session_id}")
-    
-    print(f"🎯 드래프트 - {action}: {team} {champion_korean}")

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦋 나비 내전 - 밴픽 드래프트</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/draft_cyber.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body data-session-id="{{ session_id }}">
+    <div class="draft-container">
+        <!-- 헤더 -->
+        <div class="draft-header">
+            <h1>🦋 나비 내전 - 밴픽 드래프트</h1>
+            
+            <!-- 현재 턴 표시 -->
+            <div class="current-turn-display" id="currentTurnDisplay">
+                <div class="turn-player">
+                    <img src="https://cdn.discordapp.com/embed/avatars/1.png" alt="현재 플레이어" class="turn-avatar" id="turnAvatar">
+                    <div class="turn-info" id="turnInfo">
+                        <div>로딩 중...</div>
+                        <div>게임 시작 대기</div>
+                    </div>
+                </div>
+                <div class="timer" id="timer">30</div>
+            </div>
+        </div>
+
+        <!-- 메인 드래프트 영역 -->
+        <div class="draft-main">
+            <!-- 블루팀 구성 -->
+            <div class="team-composition blue-team">
+                <div class="team-header">🔵 블루팀</div>
+                <div id="blueTeamSlots">
+                    <!-- JavaScript로 동적 생성 -->
+                </div>
+            </div>
+
+            <!-- 중앙 밴픽 영역 -->
+            <div class="ban-pick-center">
+                <!-- 밴 영역 -->
+                <div class="bans-section">
+                    <div class="bans-title">⛔ 밴된 챔피언</div>
+                    <div class="bans-display">
+                        <div class="team-bans blue-bans">
+                            <div class="team-bans-header">블루팀 밴</div>
+                            <div class="ban-slots" id="blueBanSlots">
+                                <div class="ban-slot"></div>
+                                <div class="ban-slot"></div>
+                                <div class="ban-slot"></div>
+                                <div class="ban-slot"></div>
+                                <div class="ban-slot"></div>
+                            </div>
+                        </div>
+                        <div class="team-bans red-bans">
+                            <div class="team-bans-header">레드팀 밴</div>
+                            <div class="ban-slots" id="redBanSlots">
+                                <div class="ban-slot"></div>
+                                <div class="ban-slot"></div>
+                                <div class="ban-slot"></div>
+                                <div class="ban-slot"></div>
+                                <div class="ban-slot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 챔피언 선택 -->
+                <div class="champion-select">
+                    <div class="search-container">
+                        <input type="text" class="champion-search" id="championSearch" placeholder="챔피언 검색...">
+                    </div>
+
+                    <div class="champion-grid" id="championGrid">
+                        <!-- JavaScript로 동적 생성 -->
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="current-action-btn ban-mode" id="actionBtn" disabled>⛔ 밴하기</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 레드팀 구성 -->
+            <div class="team-composition red-team">
+                <div class="team-header">🔴 레드팀</div>
+                <div id="redTeamSlots">
+                    <!-- JavaScript로 동적 생성 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/draft_cyber.js') }}"></script>
+</body>
+</html>
