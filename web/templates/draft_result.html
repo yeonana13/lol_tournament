@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🎉 드래프트 결과</title>
+    <style>
+        body { 
+            background: black; 
+            color: #00FF88; 
+            font-family: monospace; 
+            padding: 50px; 
+            text-align: center;
+        }
+        .result-box {
+            border: 2px solid #00FF88;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="result-box">
+        <h1>🎉 드래프트 결과</h1>
+        <p>세션 ID: {{ session_id }}</p>
+        <p>사용자: {{ user_info.display_name if user_info else 'Unknown' }}</p>
+        <p>>>> 결과 페이지 로딩 성공! <<<</p>
+        <br>
+        <p>곧 완전한 UI가 로드됩니다...</p>
+    </div>
+</body>
+</html>

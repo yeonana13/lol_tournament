@@ -363,3 +363,70 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+@app.route('/draft_result/<session_id>')
+def draft_result_page(session_id):
+    """드래프트 결과 확인 페이지"""
+    user = session.get('user')
+    
+    if not user:
+        return redirect(url_for('discord_login', next=request.url))
+    
+    # 세션 확인
+    if session_id not in game_sessions:
+        return "세션을 찾을 수 없습니다.", 404
+    
+    print(f"✅ 드래프트 결과 페이지 접근: {user.get('display_name', 'Unknown')} -> {session_id}")
+    return render_template('draft_result.html', session_id=session_id, user_info=user)
+
+@app.route('/api/session/<session_id>/result')
+def get_draft_result(session_id):
+    """드래프트 결과 데이터 조회"""
+    if session_id not in game_sessions or session_id not in game_states:
+        return jsonify({'error': 'Session not found'}), 404
+    
+    session_data = game_sessions[session_id]
+    game_state = game_states[session_id]
+    
+    # 결과 데이터 구성
+    result_data = {
+        'teams': game_state.get('teams', {}),
+        'bans': game_state.get('draft', {}).get('bans', {}),
+        'picks': game_state.get('draft', {}).get('picks', {}),
+        'participants': session_data.get('participants', [])
+    }
+    
+    return jsonify(result_data)
+
+# 웹소켓 이벤트 추가
+@socketio.on('join_result_session')
+def on_join_result_session(data):
+    session_id = data['session_id']
+    join_room(f"result_{session_id}")
+    
+    print(f"🎉 결과 세션 참가: {session_id}")
+
+@socketio.on('confirm_draft_results')
+def on_confirm_draft_results(data):
+    session_id = data['session_id']
+    final_data = data['final_data']
+    
+    print(f"✅ 드래프트 결과 확정: {session_id}")
+    
+    # 실제로는 디스코드로 결과 전송
+    # TODO: 디스코드 봇에 결과 전송 로직 추가
+    
+    emit('results_confirmed', {'success': True}, room=f"result_{session_id}")
+
+@socketio.on('save_draft_adjustments')
+def on_save_adjustments(data):
+    session_id = data['session_id']
+    adjustments = data['adjustments']
+    
+    # 게임 상태 업데이트
+    if session_id in game_states:
+        game_states[session_id].update(adjustments)
+    
+    print(f"💾 드래프트 수정사항 저장: {session_id}")
+    
+    emit('adjustments_saved', {'success': True}, room=f"result_{session_id}")

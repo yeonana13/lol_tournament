@@ -653,3 +653,36 @@ window.addEventListener('beforeunload', function() {
         window.cyberDraftSystem.socket.disconnect();
     }
 });
+
+// 드래프트 완료 시 결과 페이지로 자동 이동
+CyberDraftSystem.prototype.showDraftCompleted = function() {
+    const turnInfo = document.getElementById('turnInfo');
+    if (turnInfo) {
+        turnInfo.innerHTML = `
+            <div>🎉 드래프트 완료!</div>
+            <div>결과 페이지로 이동 중...</div>
+        `;
+    }
+    
+    const actionBtn = document.getElementById('actionBtn');
+    if (actionBtn) {
+        actionBtn.style.display = 'none';
+    }
+    
+    if (this.timerInterval) {
+        clearInterval(this.timerInterval);
+    }
+    
+    console.log('🎉 드래프트가 완료되었습니다!');
+    
+    // 3초 후 결과 페이지로 이동
+    setTimeout(() => {
+        window.location.href = `/draft_result/${this.sessionId}`;
+    }, 3000);
+    
+    // 소켓으로 완료 알림
+    this.socket.emit('draft_completed', {
+        session_id: this.sessionId,
+        final_state: this.gameState
+    });
+};
