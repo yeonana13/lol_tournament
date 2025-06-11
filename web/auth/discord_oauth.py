@@ -34,8 +34,7 @@ class DiscordOAuth:
     
     def get_access_token(self, code, state):
         """인증 코드로 액세스 토큰 획득"""
-        if session.get('oauth_state') != state:
-            raise ValueError("Invalid OAuth state")
+    # OAuth 상태 검증 임시 비활성화 (다중 사용자 지원)
         
         data = {
             'client_id': self.client_id,

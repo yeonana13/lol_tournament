@@ -143,8 +143,8 @@ class GameParticipationView(discord.ui.View):
                 embed.color = 0x00ff00
                 
                 # 밴픽 페이지 링크 생성
-                banpick_url = f"{Config.get_base_url()}/banpick/{session.session_id}"
-                embed.add_field(name="🔗 밴픽 페이지", value=f"[여기를 클릭하세요!]({banpick_url})", inline=False)
+                draft_cyber_url = f"{Config.get_base_url()}/draft_cyber/{session.session_id}"
+                embed.add_field(name="🔗 밴픽 페이지", value=f"[여기를 클릭하세요!]({draft_cyber_url})", inline=False)
                 
                 # 세션 상태 업데이트
                 session.status = 'lobby'
@@ -153,7 +153,7 @@ class GameParticipationView(discord.ui.View):
                 for participant in session.participants:
                     try:
                         user = await interaction.client.fetch_user(int(participant['discord_id']))
-                        await user.send(f"🦋 내전 밴픽이 시작되었습니다!\n🔗 {banpick_url}")
+                        await user.send(f"🦋 내전 밴픽이 시작되었습니다!\n🔗 {draft_cyber_url}")
                     except:
                         pass  # DM 발송 실패는 무시
                 
@@ -254,8 +254,8 @@ async def test_fill_game(ctx):
     embed.add_field(name="참가자 목록", value=participant_list, inline=False)
     
     # 밴픽 페이지 링크 생성
-    banpick_url = f"{Config.get_base_url()}/banpick/{session.session_id}"
-    embed.add_field(name="🔗 밴픽 페이지", value=f"[여기를 클릭하세요!]({banpick_url})", inline=False)
+    draft_cyber_url = f"{Config.get_base_url()}/draft_cyber/{session.session_id}"
+    embed.add_field(name="🔗 밴픽 페이지", value=f"[여기를 클릭하세요!]({draft_cyber_url})", inline=False)
     
     # 세션 상태 업데이트
     session.status = 'lobby'

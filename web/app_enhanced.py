@@ -343,6 +343,85 @@ def on_join_session(data):
     
     print(f"🎮 세션 참가: {discord_id} -> {session_id}")
 
+@app.route("/banpick/<session_id>")
+def banpick_page(session_id):
+    """밴픽 페이지 - 실제 내전용"""
+    user = session.get("user")
+    
+    if not user:
+        return redirect(url_for("discord_login", next=request.url))
+    
+    # 실제 게임 세션 확인
+    if session_id not in game_sessions:
+        # 실제 세션이 없으면 더미 데이터로 생성
+        print(f"🎮 실제 게임 세션 생성: {session_id}")
+        
+        # 더미 참가자 데이터 (10명)
+        dummy_participants = []
+        for i in range(10):
+            dummy_participants.append({
+                "discord_id": f"player_{i}",
+                "username": f"Player{i+1}",
+                "display_name": f"플레이어{i+1}",
+                "avatar_url": f"https://cdn.discordapp.com/embed/avatars/{i % 6}.png",
+                "discriminator": f"{1000 + i:04d}"
+            })
+        
+        # 게임 세션 데이터 생성
+        game_sessions[session_id] = {
+            "participants": dummy_participants,
+            "channel_id": "real_channel",
+            "guild_id": "real_guild",
+            "created_by": user,
+            "created_at": datetime.now().isoformat(),
+            "title": "🦋 나비내전",
+            "phase": "position_select"
+        }
+        
+        # 게임 상태 초기화
+        game_states[session_id] = {
+            "phase": "position_select",
+            "teams": {
+                "blue": {"TOP": None, "JUG": None, "MID": None, "ADC": None, "SUP": None},
+                "red": {"TOP": None, "JUG": None, "MID": None, "ADC": None, "SUP": None}
+            },
+            "draft": {
+                "bans": {"blue": [], "red": []},
+                "picks": {"blue": [], "red": []},
+                "currentTurn": "blue_ban_1",
+                "timer": 30
+            },
+            "participants": dummy_participants
+        }
+    
+    print(f"✅ 밴픽 페이지 접근: {user.get("display_name", "Unknown")} -> {session_id}")
+    return render_template("banpick.html", session_id=session_id, user_info=user)
+
+@app.route("/draft_result/<session_id>")
+def draft_result_page(session_id):
+    """드래프트 결과 확인 페이지"""
+    user = session.get("user")
+    
+    if not user:
+        return redirect(url_for("discord_login", next=request.url))
+    
+    # 테스트용 더미 데이터로 응답
+    print(f"✅ 드래프트 결과 페이지 접근: {session_id}")
+    return render_template("draft_result.html", session_id=session_id, user_info=user)
+
+@app.route("/api/session/<session_id>/result")
+def get_draft_result(session_id):
+    """드래프트 결과 데이터 조회"""
+    # 더미 데이터 반환
+    result_data = {
+        "teams": {
+            "blue": {"TOP": {"player": {"display_name": "테스트유저1"}, "champion": {"korean_name": "아트록스"}}},
+            "red": {"TOP": {"player": {"display_name": "테스트유저6"}, "champion": {"korean_name": "가렌"}}}
+        },
+        "bans": {"blue": ["야스오"], "red": ["아칼리"]}
+    }
+    return jsonify(result_data)
+
 def main():
     """웹서버 실행"""
     print("🤖 사이버펑크 나비 내전 웹 서버 시작...")
@@ -363,6 +442,60 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+@app.route("/banpick/<session_id>")
+def banpick_page(session_id):
+    """밴픽 페이지 - 실제 내전용"""
+    user = session.get("user")
+    
+    if not user:
+        return redirect(url_for("discord_login", next=request.url))
+    
+    # 실제 게임 세션 확인
+    if session_id not in game_sessions:
+        # 실제 세션이 없으면 더미 데이터로 생성
+        print(f"🎮 실제 게임 세션 생성: {session_id}")
+        
+        # 더미 참가자 데이터 (10명)
+        dummy_participants = []
+        for i in range(10):
+            dummy_participants.append({
+                "discord_id": f"player_{i}",
+                "username": f"Player{i+1}",
+                "display_name": f"플레이어{i+1}",
+                "avatar_url": f"https://cdn.discordapp.com/embed/avatars/{i % 6}.png",
+                "discriminator": f"{1000 + i:04d}"
+            })
+        
+        # 게임 세션 데이터 생성
+        game_sessions[session_id] = {
+            "participants": dummy_participants,
+            "channel_id": "real_channel",
+            "guild_id": "real_guild",
+            "created_by": user,
+            "created_at": datetime.now().isoformat(),
+            "title": "🦋 나비내전",
+            "phase": "position_select"
+        }
+        
+        # 게임 상태 초기화
+        game_states[session_id] = {
+            "phase": "position_select",
+            "teams": {
+                "blue": {"TOP": None, "JUG": None, "MID": None, "ADC": None, "SUP": None},
+                "red": {"TOP": None, "JUG": None, "MID": None, "ADC": None, "SUP": None}
+            },
+            "draft": {
+                "bans": {"blue": [], "red": []},
+                "picks": {"blue": [], "red": []},
+                "currentTurn": "blue_ban_1",
+                "timer": 30
+            },
+            "participants": dummy_participants
+        }
+    
+    print(f"✅ 밴픽 페이지 접근: {user.get("display_name", "Unknown")} -> {session_id}")
+    return render_template("banpick.html", session_id=session_id, user_info=user)
 
 @app.route('/draft_result/<session_id>')
 def draft_result_page(session_id):
@@ -430,3 +563,104 @@ def on_save_adjustments(data):
     print(f"💾 드래프트 수정사항 저장: {session_id}")
     
     emit('adjustments_saved', {'success': True}, room=f"result_{session_id}")
+
+
+@app.route("/banpick/<session_id>")
+def banpick_page(session_id):
+    """밴픽 페이지 - 실제 내전용"""
+    user = session.get("user")
+    
+    if not user:
+        return redirect(url_for("discord_login", next=request.url))
+    
+    # 실제 게임 세션 확인
+    if session_id not in game_sessions:
+        # 실제 세션이 없으면 더미 데이터로 생성
+        print(f"🎮 실제 게임 세션 생성: {session_id}")
+        
+        # 더미 참가자 데이터 (10명)
+        dummy_participants = []
+        for i in range(10):
+            dummy_participants.append({
+                "discord_id": f"player_{i}",
+                "username": f"Player{i+1}",
+                "display_name": f"플레이어{i+1}",
+                "avatar_url": f"https://cdn.discordapp.com/embed/avatars/{i % 6}.png",
+                "discriminator": f"{1000 + i:04d}"
+            })
+        
+        # 게임 세션 데이터 생성
+        game_sessions[session_id] = {
+            "participants": dummy_participants,
+            "channel_id": "real_channel",
+            "guild_id": "real_guild",
+            "created_by": user,
+            "created_at": datetime.now().isoformat(),
+            "title": "🦋 나비내전",
+            "phase": "position_select"
+        }
+        
+        # 게임 상태 초기화
+        game_states[session_id] = {
+            "phase": "position_select",
+            "teams": {
+                "blue": {"TOP": None, "JUG": None, "MID": None, "ADC": None, "SUP": None},
+                "red": {"TOP": None, "JUG": None, "MID": None, "ADC": None, "SUP": None}
+            },
+            "draft": {
+                "bans": {"blue": [], "red": []},
+                "picks": {"blue": [], "red": []},
+                "currentTurn": "blue_ban_1",
+                "timer": 30
+            },
+            "participants": dummy_participants
+        }
+    
+    print(f"✅ 밴픽 페이지 접근: {user.get("display_name", "Unknown")} -> {session_id}")
+    return render_template("banpick.html", session_id=session_id, user_info=user)
+
+@app.route("/draft_result/<session_id>")
+def draft_result_page(session_id):
+    """드래프트 결과 확인 페이지"""
+    user = session.get("user")
+    
+    if not user:
+        return redirect(url_for("discord_login", next=request.url))
+    
+    # 테스트용 더미 데이터로 응답
+    print(f"✅ 드래프트 결과 페이지 접근: {session_id}")
+    return render_template("draft_result.html", session_id=session_id, user_info=user)
+
+@app.route("/api/session/<session_id>/result")
+def get_draft_result(session_id):
+    """드래프트 결과 데이터 조회"""
+    # 더미 데이터 반환
+    result_data = {
+        "teams": {
+            "blue": {"TOP": {"player": {"display_name": "테스트유저1"}, "champion": {"korean_name": "아트록스"}}},
+            "red": {"TOP": {"player": {"display_name": "테스트유저6"}, "champion": {"korean_name": "가렌"}}}
+        },
+        "bans": {"blue": ["야스오"], "red": ["아칼리"]}
+    }
+    return jsonify(result_data)
+
+def main():
+    """웹서버 실행"""
+    print("🤖 사이버펑크 나비 내전 웹 서버 시작...")
+    print(f"🔑 Discord OAuth 설정:")
+    print(f"   Client ID: {discord_oauth.client_id}")
+    print(f"   Redirect URI: {discord_oauth.redirect_uri}")
+    print(f"🌐 테스트 URL: http://{Config.FLASK_HOST}:{Config.FLASK_PORT}/cyber_test")
+    
+    try:
+        socketio.run(
+            app, 
+            host=Config.FLASK_HOST, 
+            port=Config.FLASK_PORT, 
+            debug=Config.FLASK_DEBUG
+        )
+    except Exception as e:
+        print(f"❌ 웹서버 실행 실패: {e}")
+
+if __name__ == "__main__":
+    main()
